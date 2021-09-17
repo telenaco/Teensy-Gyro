@@ -1,0 +1,71 @@
+helperFuncions
+
+
+/* Helper function definitions *****************************************************************/
+void FloatToBytes(float val, byte segments[]);
+float BytesToFloat(byte segments[]);
+void ArrayCopy(byte src[], int src_index, byte dest[], int dest_index, int len );
+
+/**
+ * Union definition for floating point and integer representation conversion
+ */
+typedef union{
+	long val_l;
+	float val_f;
+} ufloat;
+
+/**
+ * Translates a 32-bit floating point into an array of four bytes
+ * 
+ * @note     None
+ * @param    val: 32-bit floating point
+ * @param    segments: array of four bytes
+ * @return   None 
+ */
+void FloatToBytes(float val, byte segments[]){
+	ufloat temp;
+
+	temp.val_f = val;
+
+	segments[3] = (byte)((temp.val_l >> 24) & 0xff);
+	segments[2] = (byte)((temp.val_l >> 16) & 0xff);
+	segments[1] = (byte)((temp.val_l >> 8) & 0xff);
+	segments[0] = (byte)((temp.val_l) & 0xff);
+}
+
+
+/**
+ * Translates an array of four bytes into a floating point
+ * 
+ * @note     None
+ * @param    segment: the input array of four bytes
+ * @return   Translated 32-bit floating point 
+ */
+float BytesToFloat(byte segments[]){
+	ufloat temp;
+
+	temp.val_l = (temp.val_l | (segments[3] & 0xff)) << 8;
+	temp.val_l = (temp.val_l | (segments[2] & 0xff)) << 8;
+	temp.val_l = (temp.val_l | (segments[1] & 0xff)) << 8;
+	temp.val_l = (temp.val_l | (segments[0] & 0xff)); 
+
+	return temp.val_f;
+}
+
+
+/**
+ * Copies elements from one array to another
+ * 
+ * @note     None
+ * @param    src: The source array to be copied from
+ * @param    src_index: The starting index of the source array
+ * @param    dest: The destination array to be copied to
+ * @param    dest_index: The starting index of the destination array
+ * @param    len: Number of elements to be copied
+ * @return   None 
+ */
+void ArrayCopy(byte src[], int src_index, byte dest[], int dest_index, int len ){
+	for(int i = 0; i < len; i++){
+		dest[dest_index + i] = src[src_index + i];
+	}
+}

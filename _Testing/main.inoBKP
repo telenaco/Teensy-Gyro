@@ -1,0 +1,86 @@
+#include <Arduino.h>
+#include <Blink.h>
+#include <GyroDevice.h>
+#include <math.h>
+
+GyroDevice gyro;
+IntervalTimer timer;
+
+float twopi = 3.14159 * 2;
+unsigned long lastTime;
+unsigned long SampleTime;
+float phase        = 0.0f;
+elapsedMicros usec = 0;
+
+bool even = false;
+
+float _freq      = 0.0002F;
+float _amplitude = 0.5F;
+
+double manualInput = 0;
+
+//cheap moving average filter
+int dataPointsCount = 15;
+double values[15];
+double out = 0;
+uint8_t k;  // k stores the index of the current array read to create a circular memory through the array
+
+void setup() {
+    pinMode(17, INPUT);
+
+    Serial.begin(115200);
+    analogWriteFrequency(20, 23437.5);  // Teensy 3.0 pin 3 also changes to 375 kHz
+
+    gyro.begin();
+
+    k = 0;  //initialize so that we start to write at index 0 for the MAF
+
+    // fill array with values
+    for (int i = 0; i < dataPointsCount; i++) {
+        values[i] = analogRead(17);  // fill the array readings from the sensor
+    }
+}
+
+void loop() {
+    manualInput = smoothReading();
+    manualInput = mapfloat(manualInput, 0, 1023, 0, 1440);
+
+    // used for calibration
+    gyro.updatePitch(smoothReading());
+    gyro.updateGyro();
+
+    //Serial.println(usec - lastTime);
+    lastTime = usec;
+
+}
+
+
+
+double mapfloat(long x, long in_min, long in_max, long out_min, long out_max) {
+    return (double)(x - in_min) * (out_max - out_min) / (double)(in_max - in_min) + out_min;
+}
+
+double smoothReading() {
+    out = 0;
+
+    // increase index when reach the end loop to 0
+    values[k] = analogRead(17);
+    k         = (k + 1) % dataPointsCount;
+
+    for (int i = 0; i < dataPointsCount; i++) {
+        out += values[i];
+    }
+    
+    out /= dataPointsCount;
+    
+    Serial.println (out + updateSine ());
+        return out ;
+
+}
+
+float updateSine() {
+    phase += micros();
+    float val = sinf(phase * _freq) * _amplitude;
+    if (phase >= twopi) phase = 0;
+    return val;
+}

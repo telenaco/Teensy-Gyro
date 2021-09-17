@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, IndentWidth: 4, ColumnLimit: 0, MaxEmptyLinesToKeep: 0}",
+		"files.associations": {
+			"list": "cpp",
+			"xhash": "cpp",
+			"string": "cpp",
+			"initializer_list": "cpp",
+			"*.tcc": "cpp"
+		}
+	}
+}
