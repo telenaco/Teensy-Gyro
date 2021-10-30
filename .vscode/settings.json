@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "string": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "exception": "cpp",
+        "iosfwd": "cpp",
+        "new": "cpp"
+    }
+}

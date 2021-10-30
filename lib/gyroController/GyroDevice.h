@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <Geometry.h>
 #include <PinDef.h>
-#include <GyroCom.h>
+//#include <GyroCom.h>
 #include <GyroAxle.h>               
 #include <GyroBrake.h>
 #include <GyroFlywheel.h>
@@ -16,9 +16,9 @@ private:
     GyroBrake brake;
     GyroAxle yawAxle;                                 // list of components per controller
     GyroAxle pitchAxle;
-    GyroCom com;
+    //GyroCom com;
 
-    float diskMass = 0.192f;                          //    96g
+    float diskMass = 0.096;                          //    96g
     float radious = 0.050f;                           //  10cm diameter
     float diskAngVel = 753.0f;                       // max speed at constant v (rad/s),standard disk at 7200 rpm
 
@@ -53,30 +53,23 @@ public:
 
     void begin();                                     // initialize controller
     void refreshReading();                            // update position values for encoder and brake 
-    void updatePosition();                            // actuation of the gimbals
+    void updatePosition();                            // actuation the gimbals to move to desire position
     void calculateTorque();                           // update the calculation of the output torque
-    void sendTorque();
-    void sendData();
-    void sendFormulaTwo();
-    void printData();
-    void setGimbalSpeed(int _vel);
     bool reachTargetAngles();
 
-    /* debug methods */
-    void brakeOn(uint32_t duration);                  // 1           
-    void brakeSmooth(uint32_t duration);              // 2
-    void flywheelSpeed(int8_t speed);                 // 5
-    void pitchTargetAngle(double angle);               // 6
-    void yawTargetAngle(double angle);                 // 7
-
-    /* print/plot methods */
-    void printPitchPos();
-    void printYawPos();
-    void plotYawReadings();
-    void plotPitchReadings();
-    void printSpeeds();
-    int getYaw();
-    int getPitch();
+    void setGimbalSpeed(float _vel);
+    // close instantanly for a period of time in milliseconds
+    void brakeOn(uint32_t duration) { brake.close(duration); };
+    // close the brake gradually over a period of time (input in milliseconds)
+    void brakeSmooth(uint32_t duration) { brake.closeSmooth(duration); };
+    // disk speed 0 - 100
+    void flywheelSpeed(int8_t speed) { flywheel.setSpeed(speed); };
+    // desired target angle per axle
+    void pitchTargetAngle(double angle) { pitchAxle.targetAngle(angle); };
+    void yawTargetAngle(double angle) { yawAxle.targetAngle(angle); };
+    // return yaw value
+    int getYaw() { return (float)yawAxle.readings.angle; };
+    int getPitch() { return (float)pitchAxle.readings.angle; };
 
 };
 #endif                                                // GYRO_DEVICE_h

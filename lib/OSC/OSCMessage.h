@@ -327,6 +327,7 @@ public:
 
     //send the message
     OSCMessage& send(Print &p);
+    OSCMessage& dump(Print &p);
 
     //fill the message from a byte stream
     OSCMessage& fill(uint8_t);

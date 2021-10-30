@@ -30,11 +30,11 @@ SLIPEncodedUSBSerial::SLIPEncodedUSBSerial(
 	serial = &s;
 	rstate = CHAR;
 }
-
-static const uint8_t eot = 0300;
-static const uint8_t slipesc = 0333;
-static const uint8_t slipescend = 0334;
-static const uint8_t slipescesc = 0335;
+													// octal    // decimal  // hex      // char					
+static const uint8_t eot = 0300;           			// 0300		// 192		// c0		// À 
+static const uint8_t slipesc = 0333;				// 0333  	// 219		// db		// Û		
+static const uint8_t slipescend = 0334;				// 0334		// 220		// dc		// Ü
+static const uint8_t slipescesc = 0335;				// 0335		// 221 		// dd 		// Ý
 /*
  SERIAL METHODS
  */
@@ -184,7 +184,8 @@ size_t SLIPEncodedUSBSerial::write(uint8_t b){
 		return serial->write(b);
 	}	
 }
-size_t SLIPEncodedUSBSerial::write(const uint8_t *buffer, size_t size)
+
+size_t SLIPEncodedUSBSerial::write(const uint8_t* buffer, size_t size)
 {
     size_t result=0;
     while(size--)
@@ -199,7 +200,8 @@ void SLIPEncodedUSBSerial::begin(unsigned long baudrate){
         //        ;
 }
 //SLIP specific method which begins a transmitted packet
-void SLIPEncodedUSBSerial::beginPacket() { 	serial->write(eot); }
+
+void SLIPEncodedUSBSerial::beginPacket() { serial->write(eot); }
 
 //signify the end of the packet with an EOT
 void SLIPEncodedUSBSerial::endPacket(){

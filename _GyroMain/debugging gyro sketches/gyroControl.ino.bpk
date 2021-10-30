@@ -25,7 +25,7 @@ void setup() {
     Serial.begin(2000000);
     Serial.println("Gyro Controller");              // to identify the com port when multiple connected
 
-    gyroController.setGimbalSpeed(25);              // slow speed to avoid vibrations
+    gyroController.setGimbalSpeed(30);              // slow speed to avoid vibrations
 
     gyroController.begin();
     blinky.begin(13, 500);
@@ -39,22 +39,13 @@ void loop() {
     gyroController.refreshReading();
     gyroController.updatePosition();
     gyroController.calculateTorque();
-    //gyroController.sendFormulaTwo();
+    gyroController.sendFormulaTwo();
 
-
-    // if (sw1 >= 1000) {                         // actuate the motor at 1KHhz 
-    //     sw1 = 0;
-    // }
-
-    // if (sw >= 4000) {                         // send data over serial at 250Hz, every 4 ms
-    //     sw = 0;
-    // }
 
     // -------------- Debug ----------------------
     if (movingRoutine) gyroRoutine();
     if (activateFeedback) feedbackOuput();
 }
-
 
 /**
  * @brief move to to controller to a series of pre determine positions, press 0 on the keyboard to start this routine
@@ -78,85 +69,53 @@ void gyroRoutine() {
     switch (Index) {
     case 1:
         // move pitch to 360 * 3
-        Serial.println("case 1");
         if (!feedbackLoopDelay()) return;
         hasIncremented = false;
-        gyroController.pitchTargetAngle(360 * 3);
+        gyroController.pitchTargetAngle(360 * 8);
         hasIncremented = false;
         break;
     case 2:
         // move pitch to 0
-        Serial.println("case 2");
         if (!feedbackLoopDelay()) return;
         hasIncremented = false;
         gyroController.pitchTargetAngle(0);
         break;
     case 3:
         // move yaw to 90
-        Serial.println("case 3");
         if (!feedbackLoopDelay()) return;
         hasIncremented = false;
         gyroController.yawTargetAngle(90);
         break;
     case 4:
         // move pitch to 360 * 3
-        Serial.println("case 4");
         if (!feedbackLoopDelay()) return;
         hasIncremented = false;
-        gyroController.pitchTargetAngle(360 * 3);
+        gyroController.pitchTargetAngle(360 * 8);
         break;
     case 5:
         // move pitch to 360 * 3
-        Serial.println("case 5");
         if (!feedbackLoopDelay()) return;
         hasIncremented = false;
         gyroController.pitchTargetAngle(90);
         break;
     case 6:
         // move pitch to 0
-        Serial.println("case 6");
         if (!feedbackLoopDelay()) return;
         hasIncremented = false;
-        gyroController.yawTargetAngle(360 * 2);
+        gyroController.yawTargetAngle(360 * 8);
         break;
     case 7:
         // move yaw to 90
-        Serial.println("case 7");
         if (!feedbackLoopDelay()) return;
         hasIncremented = false;
-        gyroController.yawTargetAngle(90);
+        gyroController.yawTargetAngle(0);
         break;
     case 8:
         // move pitch and yaw to 0 
-        Serial.println("case 8");
         if (!feedbackLoopDelay()) return;
         hasIncremented = false;
         gyroController.yawTargetAngle(0);
         gyroController.pitchTargetAngle(0);
-        break;
-    case 9:
-        // move pitch and yaw to 360 * 5
-        Serial.println("case 9");
-        if (!feedbackLoopDelay()) return;
-        hasIncremented = false;
-        gyroController.yawTargetAngle(360 * 2);
-        gyroController.pitchTargetAngle(360 * 2);
-        break;
-    case 10:
-        // move pitch and yaw to 0
-        Serial.println("case 10");
-        if (!feedbackLoopDelay()) return;
-        hasIncremented = false;
-        gyroController.yawTargetAngle(0);
-        gyroController.pitchTargetAngle(0);
-        break;
-    case 11:
-        //
-        Serial.println("case 11");
-        if (!feedbackLoopDelay()) return;
-        hasIncremented = false;
-        gyroController.setGimbalSpeed(40);
-        activateFeedback = true;
         movingRoutine = false;
         Index = 0;
         break;
@@ -174,7 +133,6 @@ bool feedbackLoopDelay() {
         // previuosMillis se actualliza cuando se incrementa el index 
         return true;
     }
-    Serial.println(currentMillis - previousMillis);
     return false;
 }
 
@@ -192,7 +150,6 @@ void feedbackOuput() {
 
     if (currentMillis - prevMilis >= interval) {
         count++;
-        Serial.println((String)"count is ->" + count);
         prevMilis = currentMillis;
 
         if (homeposition) {

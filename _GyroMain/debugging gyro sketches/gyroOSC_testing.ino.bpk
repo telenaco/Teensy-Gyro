@@ -1,0 +1,72 @@
+#include <elapsedmillis.h>
+#include <BasicLinearAlgebra.h>
+#include <GyroDevice.h>
+#include <blink.h>
+#include <OSCBundle.h>
+#include <OSCBoards.h>
+#include <SLIPEncodedSerial.h>
+
+SLIPEncodedSerial SLIPSerial(Serial1);
+
+//IntervalTimer updateTimer;
+Blink blinky;
+
+//GyroDevice gyroController;
+
+//receive a bundle
+struct DataPackage
+{
+    float recTorqX = 0.0f;
+    float recTorqY = 0.0f;
+    float recTorqZ = 0.0f;
+    float recRotX = 0.0f;
+    float recRotY = 0.0f;
+    float recRotZ = 0.0f;
+    float gVel = 0.0f;
+};
+
+DataPackage _dataPackage; 
+
+void setup() {    
+    Serial.begin(115200);
+    SLIPSerial.begin(115200);
+    blinky.begin(13, 100);
+}
+
+void loop() {
+    blinky.update();
+    readOscMes();
+}
+
+
+void readOscMes() {
+
+    OSCMessage msgIN;
+    int size;
+    while (!SLIPSerial.endofPacket())
+        if ((size = SLIPSerial.available()) > 0)
+        {
+            while (size--)
+                msgIN.fill(SLIPSerial.read());
+        }
+
+    if (!msgIN.hasError()) {   
+    _dataPackage.recTorqX =  msgIN.getFloat(0);// 0.0f;
+    _dataPackage.recTorqY =  msgIN.getFloat(1);// 0.0f;
+    _dataPackage.recTorqZ =  msgIN.getFloat(2);// 0.0f;
+    _dataPackage.recRotX = msgIN.getFloat(3);// 0.0f;
+    _dataPackage.recRotY = msgIN.getFloat(4);// 0.0f;
+    _dataPackage.recRotZ = msgIN.getFloat(5);// 0.0f;
+    _dataPackage.gVel = msgIN.getFloat(6);// 0.0f;
+
+     Serial.println((String)
+         _dataPackage.recTorqX + " <-> " + 
+         _dataPackage.recTorqY + " <-> " + 
+         _dataPackage.recTorqZ + " <-> " + 
+         _dataPackage.recRotX + " <-> " + 
+         _dataPackage.recRotY + " <-> " + 
+         _dataPackage.recRotZ + " <-> " + 
+         _dataPackage.gVel + " <-> " + 
+         millis());
+    }
+}

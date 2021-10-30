@@ -17,7 +17,7 @@ boolean AS5045::begin(byte pinCS, byte pinCLK, byte pinDO) {
   digitalWrite(_pinCLK, LOW);
   digitalWrite(_pinCS, LOW);
 
-  outlierFilter = new RunningMedian(5);
+  outlierFilter = new RunningMedian(3);
 
   this->reset();
 
@@ -33,7 +33,7 @@ void AS5045::reset() {
 }
 
 int32_t AS5045::read() {
-  //noInterrupts();
+  noInterrupts();
   digitalWrite(_pinCS, LOW);
   int32_t value = 0;
 
@@ -54,7 +54,7 @@ int32_t AS5045::read() {
     status = (status << 1) | digitalRead(_pinDO);
   }
   digitalWrite(_pinCS, HIGH);
-  //interrupts();
+  interrupts();
 
   return value;
 }

@@ -19,14 +19,14 @@ void GyroAxle::begin(int8_t IN1, int8_t IN2, int8_t DATA, int8_t CLK, int8_t CS,
 
     this->reset();
     /* adjust the values below to filter position data */
-    float _refreshLoop = 500.0f;                                                        // update loop, ms
+    float _refreshLoop = 500.0f;         // update loop, ms 
 
     _velFilter.begin(1.0f, _refreshLoop);
     _accFilter.begin(1.0f, _refreshLoop);
 
-    filterPosition = new RunningMedian(10);
-    filterVelocity = new RunningMedian(60);
-    filterAcceleration = new RunningMedian(60);
+    filterPosition = new RunningMedian(5);
+    filterVelocity = new RunningMedian(3);
+    filterAcceleration = new RunningMedian(3);
 }
 
 void GyroAxle::reset() {
@@ -34,32 +34,34 @@ void GyroAxle::reset() {
     _velFilter.reset();
     _accFilter.reset();
 
-    readings.time = 0;
-    readings.pos = 0;
+    readings.time  = 0;
+    readings.pos   = 0;
     readings.angle = 0;
-    readings.vel = 0;
-    readings.acc = 0;
-    previousReadings.time = 0;
-    previousReadings.pos = 0;
+    readings.vel   = 0;
+    readings.acc   = 0;
+    previousReadings.time  = 0;
+    previousReadings.pos   = 0;
     previousReadings.angle = 0;
-    previousReadings.vel = 0;
-    previousReadings.acc = 0;
+    previousReadings.vel   = 0;
+    previousReadings.acc   = 0;
 }
 
 void GyroAxle::updateReadings() {
 
-    readings.time = micros();                                                             // update time and delta time 
+    // update a data package
+    // - Time
+    readings.time = micros();
     _deltaTime = ((float)(readings.time - previousReadings.time));
-
-    readings.pos = encoder.readEnc();                                                     // refresh position
-
+    // - Current encoder position (encoder steps per turn)
+    readings.pos = encoder.readEnc();
     filterPosition->add(readings.pos);
-    readings.pos = filterPosition->getAverage(3);
-
-    readings.angle = (readings.pos / _ratio);                                             // ratio value is given at the class init, ratio == encoder steps per degree                                                                   
-    readings.radians = ((readings.pos / _ratio) * (PI / 180.0f));                         // radians 
-
-    readings.vel = (((readings.radians - previousReadings.radians)) / _deltaTime) * 1e6;  // deg/s                                                                  
+    readings.pos = filterPosition->getMedian();
+    // - Current angle 
+    readings.angle = (readings.pos / _ratio);
+    // - Current radians
+    readings.radians = radians(readings.angle);
+    // - Current velocity
+    readings.vel = (((readings.radians - previousReadings.radians)) / _deltaTime) * 1e6;                                                 
     filterVelocity->add(readings.vel);
     readings.vel = filterVelocity->getAverage(10);
     readings.vel = _velFilter.filter(readings.vel);
@@ -67,8 +69,8 @@ void GyroAxle::updateReadings() {
         (readings.vel >= -0.1f && readings.vel <= 0)) {
         readings.vel = 0;
     }
-
-    readings.acc = ((readings.vel - previousReadings.vel) / _deltaTime) * 1e6;            // deg/s^2
+    // - Current acceleration
+    readings.acc = ((readings.vel - previousReadings.vel) / _deltaTime) * 1e6;           // rad/s^2
     filterAcceleration->add(readings.acc);
     readings.acc = filterAcceleration->getAverage(10);
     readings.acc = _accFilter.filter(readings.acc);
@@ -79,106 +81,145 @@ void GyroAxle::updateReadings() {
 
     /* update previous readings with current readings for next time the loop runs */
     previousReadings.time = readings.time;
-    previousReadings.pos = readings.pos;
-    previousReadings.angle = readings.angle;
     previousReadings.radians = readings.radians;
     previousReadings.vel = readings.vel;
-    previousReadings.acc = readings.acc;
+
+    // Serial1.print(_targetAngle);
+    // Serial1.print(',');
+    // Serial1.print(readings.pos);
+    // Serial1.print(',');
+    // Serial1.print(readings.radians);
+    // Serial1.print(',');
+    // Serial1.print(readings.angle);
+    // Serial1.print(',');
+    // Serial1.print(readings.vel);
+    // //Serial1.print(_error);
+    // Serial1.print(',');
+    // Serial1.print(readings.acc);
+    // Serial1.print(',');
+    // Serial1.print(millis());
+    // Serial1.println("");
 
     /* proportional  */
+    // calculate the shorter path to the desire angle
+    // https://math.stackexchange.com/questions/110080/shortest-way-to-achieve-target-angle
+    float tmp[3];
+    // fmod (float modulus)
+    float curPos;
+    curPos = readings.angle < 0 ? 360 + fmodf(readings.angle, 360.0f) : fmodf(readings.angle, 360.0f);
 
-    _error = fabs(_targetAngle - readings.angle);
+    tmp[0] = _targetAngle - curPos;
+    tmp[1] = (_targetAngle - curPos) + 360;
+    tmp[2] = (_targetAngle - curPos) - 360;
+
+    // the lowest value of the array above determines the shortest path
+    // if negative value is rotate CW, if positive CCW
+    _error = 720;
+    for (int i = 0; i <= 2; i++) {
+        if (_error > fabs(tmp[i])) {
+            _error = fabs(tmp[i]);
+            // determine direction of min value
+            (tmp[i] < 0)? _direction = true : _direction = false;
+            //(tmp[i] < 0)? Serial1.print("clockwise") : Serial1.print("Cclockwise") ;
+        }     
+    }
+
+  
+
+
+    float static _prevError = 0;
+    float static _errorIntegral = 0;
 
     /* integral */
-    errorIntegral = errorIntegral + _error * _deltaTime;
-    if (_error < _deadband) errorIntegral = 0.0f;
+    _errorIntegral = _errorIntegral + _error * _deltaTime;
+    // the below solve some inestability on the pid at 0
+    if (_error < _deadband) _errorIntegral = 0.0f;
 
     /* derivative */
-    float dedt = (_error - prevError) / (_deltaTime);
+    float dedt = (_error - _prevError) / (_deltaTime);
 
-    prevError = _error;
+    //             P                I                       D 
+    _speed = (_kp * _error) + (_ki * _errorIntegral) + (_kd * dedt);
+    
+    _prevError = _error;
 
-    _speed = (kp * _error)+(ki * errorIntegral) + (kd * dedt);   
+    Serial1.print("target angle ->");
+    Serial1.print(_targetAngle);
+    Serial1.print("  curPos  -> ");
+    Serial1.print(curPos);
+    Serial1.print("  error  -> ");
+    Serial1.print(_error);
+    Serial1.print("  Kp Ki Kd ");
+    Serial1.print((String)_kp + " , " + _ki + " , " + _kd);
+    Serial1.print("  minSpeed  -> ");
+    Serial1.print(maxSpeed);
+    Serial1.print("  speed  -> ");
+
+
+    // give it a kick to overcome friction if gimbal is stop
+    if (_speed <= minSpeed) {
+        _speed += minSpeed;
+    }
+    else if (_speed >= maxSpeed)
+    {
+        _speed = maxSpeed;
+    }
+    
+
+
+    //constrain(_speed, minSpeed, maxSpeed);
+    Serial1.print(_speed);
+    Serial1.println("");
+
+
+    // convert motor speed % to 0-255
+    _speed = map(_speed, 0, 100, 0, 255);
+
+        
+   
+    
+
+    // // deadband speed, override PID
+    if (fabs(_error) <= _deadband) _speed = 0;
+    Serial1.print(_speed);
+    Serial1.println("");
 }
+
+
 
 void GyroAxle::updatePosition() {
-    this->updateReadings();
 
-    // Serial.print("target angle -> ");
-    // Serial.print(_targetAngle);
-    // Serial.print(" reading angle -> ");
-    // Serial.print(readings.angle);
-    // Serial.print(" error -> ");
-    // Serial.print(_error);
-
-    if (_error <= 1.0) {
+    // error too small 
+    if (_error <= _deadband) {
         digitalWrite(_IN1, LOW);
         digitalWrite(_IN2, LOW);
-        //Serial.println(" zero speed");
+        Serial1.println("zero");
+        Serial1.println("");
+        return;
     }
-
-    else if (_targetAngle >= readings.angle) {
-        // backwards
-        _speed += (minSpeed - 6);
-        _speed = (_speed >= maxSpeed) ? maxSpeed : _speed;  // if speed is above max, cap it to max value
-
-        // Serial.print(" speed is -> ");
-        // Serial.print(_speed);
-        // Serial.println(" backwards ");
-
-        _speed = map(_speed, 0, 100, 0, 255);
-
+    
+    if (!_direction) {
+        // CCW looking from the Z axis down
         analogWrite(_IN1, 0);
         analogWrite(_IN2, _speed);
+        Serial1.println("CCW");
+        Serial1.println("");
     }
-    else if (_targetAngle <= readings.angle) {
-        // forwards
-        _speed += (minSpeed - 6);
-
-        _speed = (_speed >= maxSpeed) ? maxSpeed : _speed;  // if speed is above max, cap it to max value
-
-        // Serial.print(" speed is -> ");
-        // Serial.print(_speed);
-        // Serial.println(" forward ");
-
-        _speed = map(_speed, 0, 100, 0, 255);
-
+    else if (_direction) {
+        // CW looking from the Z axis down
         analogWrite(_IN1, _speed);
         analogWrite(_IN2, 0);
+        Serial1.println("CW");
+        Serial1.println("");
     }
-}
-
-void GyroAxle::setMaxVel(int16_t _vel) {
-    maxSpeed = _vel;
-}
-void GyroAxle::setMinVel(int16_t _vel) {
-    minSpeed = _vel;
-}
-
-void GyroAxle::setPidVal(double _kp, double _ki, double _kd) {
-    kp = _kp;
-    ki = _ki;
-    kd = _kd;
 }
 
 void GyroAxle::targetAngle(double pos) {
-    reachedTarget = false;
+    _reachedTarget = false;
     _targetAngle = pos;
 }
 
-void GyroAxle::printAngle() {
-    Serial.println(readings.angle);
-}
-
-void GyroAxle::printSpeed() {
-    Serial.println(_speed);
-}
-
 bool GyroAxle::reachTarget() {
-    if (_error <= 2) return true;
+    if (_error <= _deadband) return true;
     else return false;
-}
-
-axleReadings GyroAxle::getReadings() {
-    return readings;
 }
