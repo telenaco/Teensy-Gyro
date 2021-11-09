@@ -84,39 +84,49 @@ void GyroAxle::updateReadings() {
     previousReadings.radians = readings.radians;
     previousReadings.vel = readings.vel;
 
-    // Serial1.print(_targetAngle);
+    // Serial1.print(_targetAngle,1);
     // Serial1.print(',');
     // Serial1.print(readings.pos);
     // Serial1.print(',');
     // Serial1.print(readings.radians);
     // Serial1.print(',');
-    // Serial1.print(readings.angle);
+    // Serial1.print(readings.angle,1);
     // Serial1.print(',');
     // Serial1.print(readings.vel);
-    // //Serial1.print(_error);
     // Serial1.print(',');
     // Serial1.print(readings.acc);
     // Serial1.print(',');
     // Serial1.print(millis());
-    // Serial1.println("");
+    // Serial1.print(',');
+    //Serial1.println("");
 
     /* proportional  */
     // calculate the shorter path to the desire angle
     // https://math.stackexchange.com/questions/110080/shortest-way-to-achieve-target-angle
     float tmp[3];
     // fmod (float modulus)
-    float curPos;
-    curPos = readings.angle < 0 ? 360 + fmodf(readings.angle, 360.0f) : fmodf(readings.angle, 360.0f);
+    float clampPos, clampTarget;
+    clampPos = readings.angle < 0 ? 360 + fmodf(readings.angle, 360.0f) : fmodf(readings.angle, 360.0f);
+    clampTarget = _targetAngle < 0 ? 360 + fmodf(_targetAngle, 360.0f) : fmodf(_targetAngle, 360.0f);
 
-    tmp[0] = _targetAngle - curPos;
-    tmp[1] = (_targetAngle - curPos) + 360;
-    tmp[2] = (_targetAngle - curPos) - 360;
+    tmp[0] = clampTarget - clampPos;
+    tmp[1] = clampTarget - clampPos + 360;
+    tmp[2] = clampTarget - clampPos - 360;
+
+    // Serial1.print(clampTarget,1);
+    // Serial1.print(',');
+    // Serial1.print(clampPos,1);
+    // Serial1.print(',');
+    // Serial1.print(tmp[2],1);
+    // Serial1.print(',');
 
     // the lowest value of the array above determines the shortest path
+    // Serial1.print(clampPos);
+    // Serial1.print(',');
     // if negative value is rotate CW, if positive CCW
-    _error = 720;
+    _error = fabs(tmp[0]);
     for (int i = 0; i <= 2; i++) {
-        if (_error > fabs(tmp[i])) {
+        if ( _error >= fabs(tmp[i] )) {
             _error = fabs(tmp[i]);
             // determine direction of min value
             (tmp[i] < 0)? _direction = true : _direction = false;
@@ -143,17 +153,18 @@ void GyroAxle::updateReadings() {
     
     _prevError = _error;
 
-    Serial1.print("target angle ->");
-    Serial1.print(_targetAngle);
-    Serial1.print("  curPos  -> ");
-    Serial1.print(curPos);
-    Serial1.print("  error  -> ");
-    Serial1.print(_error);
-    Serial1.print("  Kp Ki Kd ");
-    Serial1.print((String)_kp + " , " + _ki + " , " + _kd);
-    Serial1.print("  minSpeed  -> ");
-    Serial1.print(maxSpeed);
-    Serial1.print("  speed  -> ");
+    // Serial1.print("target angle ->");
+    // Serial1.print(_targetAngle);
+    // Serial1.print("  clampPos  -> ");
+    // Serial1.print(clampPos);
+    // Serial1.print("  error  -> ");
+    //  Serial1.print(_error,1);
+    // Serial1.print(',');
+    // Serial1.print("  Kp Ki Kd ");
+    // Serial1.print((String)_kp + " , " + _ki + " , " + _kd);
+    // Serial1.print("  minSpeed  -> ");
+    // Serial1.print(maxSpeed);
+    // Serial1.print("  speed  -> ");
 
 
     // give it a kick to overcome friction if gimbal is stop
@@ -168,8 +179,8 @@ void GyroAxle::updateReadings() {
 
 
     //constrain(_speed, minSpeed, maxSpeed);
-    Serial1.print(_speed);
-    Serial1.println("");
+    // Serial1.print(_speed);
+    // Serial1.println("");
 
 
     // convert motor speed % to 0-255
@@ -181,8 +192,8 @@ void GyroAxle::updateReadings() {
 
     // // deadband speed, override PID
     if (fabs(_error) <= _deadband) _speed = 0;
-    Serial1.print(_speed);
-    Serial1.println("");
+    //  Serial1.println(_speed,1);
+     //Serial1.println("");
 }
 
 
@@ -193,24 +204,22 @@ void GyroAxle::updatePosition() {
     if (_error <= _deadband) {
         digitalWrite(_IN1, LOW);
         digitalWrite(_IN2, LOW);
-        Serial1.println("zero");
-        Serial1.println("");
+        // Serial1.println("zero");
+        // Serial1.println("");
         return;
     }
-    
+
     if (!_direction) {
         // CCW looking from the Z axis down
         analogWrite(_IN1, 0);
         analogWrite(_IN2, _speed);
-        Serial1.println("CCW");
-        Serial1.println("");
+        // Serial1.println("CCW");
+        // Serial1.println("");
     }
     else if (_direction) {
         // CW looking from the Z axis down
         analogWrite(_IN1, _speed);
         analogWrite(_IN2, 0);
-        Serial1.println("CW");
-        Serial1.println("");
     }
 }
 

@@ -26,13 +26,14 @@ void GyroDevice::begin() {
 
 	// initialize both axles
 	yawAxle.begin(yawA, yawB, yawData, yawClk, yawCs, ratioYaw);
-	yawAxle.setMinVel(8); // mminimu value requried to overcome friction for the axle to start rotating
+	yawAxle.setMinVel(8); 
 	yawAxle.setMaxVel(20);
 	yawAxle.setPidVal(2.0, 0.0, 10000.0);
 	
 	pitchAxle.begin(pitchA, pitchB, pitchData, pitchClk, pitchCs, ratioPitch);
-	pitchAxle.setMinVel(15);  // mminimu value requried to overcome friction for the axle to start rotating
-	pitchAxle.setPidVal(1.0, 0.0, 0.0);
+	pitchAxle.setMinVel(7);  
+	pitchAxle.setMaxVel(20);  
+	pitchAxle.setPidVal(3.0, 0.0, 18000.0);
 
 	flywheel.begin(flywheelPin);
 	flywheel.setSpeed(0);
@@ -61,16 +62,16 @@ void GyroDevice::begin() {
  * @brief call the encoders and update the reading of current position for both axles
  */
 void GyroDevice::refreshReading() {
-	yawAxle.updateReadings();
-	//pitchAxle.updateReadings();
+	//yawAxle.updateReadings();
+	pitchAxle.updateReadings();
 }
 
 /**
  * @brief update the target angle for both axles and move towards target
  */
 void GyroDevice::updatePosition() {
-	yawAxle.updatePosition();
-	//pitchAxle.updatePosition();
+	//yawAxle.updatePosition();
+	pitchAxle.updatePosition();
 	brake.update();
 }
 
@@ -145,5 +146,65 @@ void GyroDevice::calculateTorque() {
 	longEqTorque = rot_a_to_d * longEqTorque;
 	shortEqTorque = rot_a_to_d * shortEqTorque;
 }
+
+void GyroDevice::calculateDisplacemnet() {
+
+	// we got the torque from the collision and need to know how much we move 
+	// each gimbal 
+
+	// work out for yaw
+
+	// yawAxle.acceleration =  (2* pitchAxle.position)
+
+	// float pitchPos = pitchAxle.readings.radians;
+	// float yawPos = yawAxle.readings.radians;
+
+	// // update vector components
+	// omegaDotDisk.X() = (-yawAxle.readings.acc * sin(pitchPos)) - (yawAxle.readings.vel * pitchAxle.readings.vel * sin(pitchPos));
+	// omegaDotDisk.Y() = pitchAxle.readings.acc;
+	// // [\dot\psi] disk angular acceleration is omited as the disk spins at a constant velocity
+	// omegaDotDisk.Z() = (yawAxle.readings.acc * cos(pitchPos)) - (yawAxle.readings.vel * pitchAxle.readings.vel * sin(pitchPos));
+
+	// // left side of the equation 
+	// Point tmp1 = I * omegaDotDisk;
+
+	// omegaDisk.X() = -yawAxle.readings.vel * sin(pitchPos);
+	// omegaDisk.Y() = pitchAxle.readings.vel;
+	// omegaDisk.Z() = diskAngVel + (yawAxle.readings.vel * cos(pitchPos));
+
+	// // right side of the equation
+	// Point tmp2 = I * omegaDisk;
+
+	// omegaGimbal.X() = -yawAxle.readings.vel * sin(pitchPos);
+	// omegaGimbal.Y() = pitchAxle.readings.vel;
+	// omegaGimbal.Z() = yawAxle.readings.vel * cos(pitchPos);
+
+	// Point tmp3 = omegaGimbal.CrossProduct(tmp2);
+
+	// longEqTorque = tmp1 + tmp3;
+
+	// shortEqTorque.X() = (inertiaZ * 2) * (((pitchAxle.readings.vel * diskAngVel) / 2) - (0.25 * yawAxle.readings.acc * sin(pitchAxle.readings.pos)));
+
+	// shortEqTorque.Y() = (inertiaX) * (pitchAxle.readings.vel * sin(pitchAxle.readings.pos) *
+	// 	((pitchAxle.readings.vel * cos(yawAxle.readings.pos)) + (2 * diskAngVel))
+	// 	+ pitchAxle.readings.acc);
+
+	// shortEqTorque.Z() = inertiaZ *
+	// 	((pitchAxle.readings.acc * cos(pitchAxle.readings.pos)) -
+	// 		(pitchAxle.readings.vel * yawAxle.readings.vel * sin(pitchAxle.readings.pos)));
+
+	// // 	//R_a_d
+	// rot_a_to_d <<
+	// 	cos(pitchPos) * cos(yawPos), -sin(yawPos), sin(pitchPos)* cos(yawPos),
+	// 	cos(pitchPos)* sin(yawPos), cos(yawPos), sin(pitchPos)* sin(yawPos),
+	// 	sin(pitchPos), 0, cos(pitchPos);
+
+	// //M_d
+	// longEqTorque = rot_a_to_d * longEqTorque;
+	// shortEqTorque = rot_a_to_d * shortEqTorque;
+
+}
+
+
 
 #endif // __GYRODEVICE_H__

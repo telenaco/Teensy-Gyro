@@ -55,6 +55,7 @@ public:
     void refreshReading();                            // update position values for encoder and brake 
     void updatePosition();                            // actuation the gimbals to move to desire position
     void calculateTorque();                           // update the calculation of the output torque
+    void calculateDisplacemnet();
     bool reachTargetAngles();
 
     void setGimbalSpeed(float _vel);

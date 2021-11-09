@@ -6,12 +6,15 @@
 #include <OSCBoards.h>
 #include <SLIPEncodedUSBSerial.h>
 #include <SLIPEncodedSerial.h>
+#include <gyroPinDef.h>
 
 // encoding to send and receive message to UNITY
 SLIPEncodedUSBSerial SLIPSerial(Serial);
 
+
 // for debugging, keep blinking 
 Blink blinky;
+int32_t counter = 0;
 
 // controller 
 GyroDevice gyroController;
@@ -19,6 +22,12 @@ GyroDevice gyroController;
 RunningMedian* inputPositionX;
 RunningMedian* inputPositionY;
 RunningMedian* inputPositionZ;
+
+bool impact = false;
+
+unsigned long prevMillis = 0;
+const long interval = 2;
+int position = 0;
 
 // data received on a message, torque, Rotation and velocity to actuate the gyro
 struct DataPackage {
@@ -34,57 +43,47 @@ struct DataPackage {
 DataPackage _dataPackage;
 
 void setup() {
-    SLIPSerial.begin(115200);
+    SLIPSerial.begin(2000000);
     // debug, echo data via serial 1
     Serial1.begin(115200);
+    
 
     // all the initialization data (PID values, encoder steps...) declared in the class
     gyroController.begin();
     blinky.begin(13, 500);
 
-    inputPositionX = new RunningMedian(3);
-    inputPositionY = new RunningMedian(5);
-    inputPositionZ = new RunningMedian(5);
+    // inputPositionX = new RunningMedian(3);
+    // inputPositionY = new RunningMedian(5);
+    // inputPositionZ = new RunningMedian(5);
 
-    gyroController.flywheelSpeed(60);
+    gyroController.setGimbalSpeed(25);
+    gyroController.flywheelSpeed(20);
 }
 
+
 void loop() {
-    // show that the controller is alive and running, if no flashing might be stuck somewhere 
+
+    // show that the controller is alive and running, if no flash|ing might be stuck somewhere 
     blinky.update();
-    // receive msg from unity
+    
+    // receive msg from unity    
+    updateUnityMsg();
+    // // calculate the required acceleration
 
-
-    //updateUnityMsg();
-    // calculate the required acceleration
-
-    // motor velocity is always same 
+    // // motor velocity is always same 
 
     gyroController.refreshReading();
     gyroController.updatePosition();
+    syncPositions();
 
-    if (Serial.available()) {
-        static int angle = 0;
-        // read the incoming byte:
-        char incomingByte = Serial.read();
-        if (incomingByte == 'a') {
-            Serial.println(incomingByte);
-            gyroController.yawTargetAngle(angle += 10);
-        }
-        if (incomingByte == 'b') {
-            Serial.println(incomingByte);
-            gyroController.yawTargetAngle(angle -= 10);
-        }
-    }
 }
 
 /**
- * @brief read the serial stream, messages are encoded using OSC.
- *
+ * @brief read a bynary stream encoded using SLIP and OSC.
  */
 void updateUnityMsg() {
-
-    OSCMessage msgIN;
+    
+    OSCMessage msgIn;
     int size;
     unsigned long start = millis();
     unsigned long timeout = 12;
@@ -92,33 +91,26 @@ void updateUnityMsg() {
     while (!SLIPSerial.endofPacket()) {
         if ((size = SLIPSerial.available()) > 0) {
             while (size--) {
-                msgIN.fill(SLIPSerial.read());
+                msgIn.fill(SLIPSerial.read());
             }
         }
         unsigned long now = millis();
         unsigned long elapsed = now - start;
+        // if there is no new message return without updating data
         if (elapsed > timeout) return;
     }
 
-    if (!msgIN.hasError()) {
-
-        // SLIPSerial.beginPacket();
-        // msgIN.send(SLIPSerial);
-        // SLIPSerial.endPacket();
-
-        _dataPackage.TorqX = msgIN.getFloat(0);
-        _dataPackage.TorqY = msgIN.getFloat(1);
-        _dataPackage.TorqZ = msgIN.getFloat(2);
-        _dataPackage.RotX = msgIN.getFloat(3);
-        _dataPackage.RotY = msgIN.getFloat(4);
-
-        inputPositionZ->add(msgIN.getFloat(5));
-        _dataPackage.RotZ = inputPositionZ->getMedian();
-
-        _dataPackage.gVel = msgIN.getFloat(6);
-
-        syncPositions();
+    if (!msgIn.hasError()) {
+        msgIn.dispatch("/yaw", yawIncrement);
+        msgIn.dispatch("/pitch", pitchIncrement);
+        msgIn.dispatch("/G_vel", setGimbalVel);
+        msgIn.dispatch("/F_vel", setFlywheelVel);
+        msgIn.dispatch("/data", refreshData);
+        msgIn.dispatch("/impact", actuation);
     }
+
+        // if ((_dataPackage.TorqX || _dataPackage.TorqY || _dataPackage.TorqZ) > 0) {
+        //     impact = true;        
 }
 
 void calcTorque() {
@@ -129,11 +121,76 @@ void syncPositions() {
 
     // Ajust the gimbal speed to actuate the disk
     // rotate the yaw (z) first then the pitch (y) 
-    //gyroController.pitchTargetAngle(_dataPackage.RotY);
-    //gyroController.yawTargetAngle(_dataPackage.RotZ);
-    gyroController.yawTargetAngle(90);
+    gyroController.pitchTargetAngle(_dataPackage.RotY);
+    gyroController.yawTargetAngle(_dataPackage.RotZ);
+    //Serial1.println(position);
+
+    //gyroController.yawTargetAngle(90);
 }
 
-void impact() {
-    // we move to the calculated desired positoin and inmediatly lower the speed to min for a given time to avoid opposite feedback
+void impactRoutine() {
+
+    // timer variables
+    static unsigned long previousMillis = 0;
+    static unsigned long currentMillis = 0;
+    const long interval = 2000;
+
+    // speed for impact
+    gyroController.setGimbalSpeed(100);
+
+    gyroController.calculateDisplacemnet();
+
+        
+        while (currentMillis - previousMillis >= interval) {
+            // save the last time you blinked the LED
+      previousMillis = currentMillis;
+  }
+
+  impact = false;
 }
+
+
+void yawIncrement(OSCMessage& msg) {
+    _dataPackage.RotZ += msg.getFloat(0);
+    //Serial1.println(_dataPackage.RotZ);    
+    //Serial1.print("Match: '/yawIncrement' - ");
+}
+
+void pitchIncrement(OSCMessage& msg) {
+    _dataPackage.RotY += msg.getFloat(0);
+    //Serial1.print("Match: '/pitchincrement' - ");
+    //Serial1.println(_dataPackage.RotY);    
+}
+
+void setGimbalVel(OSCMessage& msg) {
+    gyroController.setGimbalSpeed(msg.getFloat(0));
+    //Serial1.print("Match: '/setGimbalVel'");
+    //Serial1.println(msg.getFloat(0));    
+}
+
+
+void setFlywheelVel(OSCMessage& msg) {
+    gyroController.flywheelSpeed(0);
+    gyroController.flywheelSpeed(msg.getFloat(0));
+    //Serial1.print("Match: '/setFlywheelVel'");
+    //Serial1.println(msg.getFloat(0));
+}
+
+void refreshData(OSCMessage& msg) {
+    
+        _dataPackage.TorqX = msg.getFloat(0);
+        _dataPackage.TorqY = msg.getFloat(1);
+        _dataPackage.TorqZ = msg.getFloat(2);
+        _dataPackage.RotX =  msg.getFloat(3);
+        _dataPackage.RotY =  msg.getFloat(4);
+        _dataPackage.RotZ =  msg.getFloat(5);
+        _dataPackage.gVel =  msg.getFloat(6);
+
+    //Serial1.println("Match: '/refreshData'");
+}
+
+void actuation(OSCMessage& msg) {
+    //Serial1.println("Match: '/actuation'");
+}
+
+

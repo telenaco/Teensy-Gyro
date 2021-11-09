@@ -8,7 +8,7 @@ Extends the Serial class to encode SLIP over serial
 
 
 #include <Stream.h>
-
+#include <usb_serial.h>
 
 #if (defined(TEENSYDUINO) && defined(USB_SERIAL)) || (!defined(TEENSYDUINO) && defined(__AVR_ATmega32U4__)) || defined(__SAM3X8E__) || (defined(_USB) && defined(_USE_USB_FOR_SERIAL_))  || defined(_SAMD21_) || (defined(__PIC32MX__) || defined(__PIC32MZ__))
 
@@ -33,7 +33,7 @@ Extends the Serial class to encode SLIP over serial
 
 
 
-class SLIPEncodedUSBSerial: public Stream{
+class SLIPEncodedUSBSerial: public usb_serial_class{
 	
 private:
 	enum erstate {CHAR, FIRSTEOT, SECONDEOT, SLIPESC } rstate;
