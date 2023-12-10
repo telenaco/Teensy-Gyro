@@ -1,7 +1,7 @@
 #include <GyroDevice.h>
 #include <AS5045.h>
 #include <Blink.h>
-#include <pinDef.h>
+#include <gyroPinDef.h>
 #include <elapsedMillis.h>
 
 AS5045 encoderYaw, encoderPitch;

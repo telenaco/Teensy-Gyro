@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <Geometry.h>
-#include <PinDef.h>
+#include <gyroPinDef.h>
 //#include <GyroCom.h>
 #include <GyroAxle.h>               
 #include <GyroBrake.h>
@@ -18,7 +18,7 @@ private:
     GyroAxle pitchAxle;
     //GyroCom com;
 
-    float diskMass = 0.096;                          //    96g
+    float diskMass = 0.096f;                          //    96g
     float radious = 0.050f;                           //  10cm diameter
     float diskAngVel = 753.0f;                       // max speed at constant v (rad/s),standard disk at 7200 rpm
 
@@ -55,8 +55,9 @@ public:
     void refreshReading();                            // update position values for encoder and brake 
     void updatePosition();                            // actuation the gimbals to move to desire position
     void calculateTorque();                           // update the calculation of the output torque
-    void calculateDisplacemnet();
     bool reachTargetAngles();
+    void setPidMove();
+    void setPidImpact();
 
     void setGimbalSpeed(float _vel);
     // close instantanly for a period of time in milliseconds
@@ -71,6 +72,7 @@ public:
     // return yaw value
     int getYaw() { return (float)yawAxle.readings.angle; };
     int getPitch() { return (float)pitchAxle.readings.angle; };
+    void printData();
 
 };
 #endif                                                // GYRO_DEVICE_h

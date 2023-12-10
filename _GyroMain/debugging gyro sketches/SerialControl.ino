@@ -1,5 +1,5 @@
 #include <elapsedmillis.h>
-#include <pinDef.h>
+#include <gyroPinDef.h>
 #include <GyroDevice.h>
 #include <AS5045.h>
 #include <GyroAxle.h>

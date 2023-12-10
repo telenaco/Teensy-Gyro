@@ -13,8 +13,8 @@
 #define pitchCs     8
 #define pitchClk    12
 
- // axis controller
-#define yawA        22
-#define yawB        21
-#define pitchA      20
-#define pitchB      23
+//  // axis controller
+// #define yawA        22
+// #define yawB        21
+// #define pitchA      20
+// #define pitchB      23
