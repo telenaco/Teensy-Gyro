@@ -16,10 +16,10 @@
 //  // axis controller
 // #define yawEnable   22
 // #define pitchEnable 23
-#define yawA        20
-#define yawB        23
-#define pitchA      21
-#define pitchB      22
+#define yawA        22
+#define yawB        21
+#define pitchA      20
+#define pitchB      23
 
 
 // #define flywheelPin 5 // 5
